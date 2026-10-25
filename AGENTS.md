@@ -120,6 +120,7 @@ Commit titles should be long and descriptive enough to clearly summarize the ful
 
 - `PORT` / `HOST` — Express listen address (default: 11345 / 0.0.0.0)
 - `SESSION_SECRET` — Required for session signing
+- `SECRETS_KEY` — 32-byte key (hex or base64) encrypting stored secrets (`{$secret.NAME}`); without it secrets can't be saved
 - `DB_TYPE=postgres` + `DB_POSTGRESDB_*` — Switch from disk JSON to PostgreSQL
 - `ALLOWED_IPS` — Comma-separated IP allowlist
 - `ALLOW_PRIVATE_NETWORKS` — Enable scraping private IPs (SSRF risk)

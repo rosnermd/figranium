@@ -6,6 +6,7 @@ const { validateUrl } = require('../../../url-utils');
 const { parseBooleanFlag, sanitizeRunId, toCsvString } = require('../../../common-utils');
 const { createRedactor, createRedactingLog, collectSecretValues } = require('../../../redaction');
 const { runExtractionScript } = require('../sandbox');
+const { decryptAll: decryptAllSecrets } = require('../../server/secrets');
 const { cleanHtml } = require('../dom-utils');
 const { launchBrowser, createBrowserContext } = require('../browser');
 
@@ -60,6 +61,18 @@ async function runFigranite(data, options = {}) {
     ], {
         onSkip: (msg) => console.warn(`[FIGRANITE] ${msg}`)
     });
+    // Secret-manager values, referenced as {$secret.NAME}. Loaded per run so a
+    // value changed in Settings applies to the next run, and registered with
+    // the redactor before anything can be logged. They never enter
+    // runtimeVars, so extraction scripts and child tasks can't read them.
+    const { values: secretStore, errors: secretStoreErrors } = await decryptAllSecrets()
+        .catch((err) => ({ values: {}, errors: [`Failed to load secrets: ${err.message}`] }));
+    Object.values(secretStore).forEach((value) => redactor.addSecret(value));
+    const missingSecrets = new Set();
+    // Set once the log buffer exists; references resolved before then (e.g.
+    // the start URL) are reported when it is created.
+    let warnMissingSecret = null;
+
     // Names carried into child tasks started by the `start` action.
     const activeSecretVars = new Set([
         ...secretVarNames,
@@ -79,6 +92,15 @@ async function runFigranite(data, options = {}) {
         if (typeof input !== 'string' || !input.includes('{$')) return input;
         return input.replace(/\{\$([\w.]+)\}/g, (_match, name) => {
             if (name === 'now') return new Date().toISOString();
+            if (name.startsWith('secret.')) {
+                const secretName = name.slice('secret.'.length);
+                if (Object.prototype.hasOwnProperty.call(secretStore, secretName)) return secretStore[secretName];
+                if (!missingSecrets.has(secretName)) {
+                    missingSecrets.add(secretName);
+                    if (warnMissingSecret) warnMissingSecret(secretName);
+                }
+                return '';
+            }
             const value = runtimeVars[name];
             if (value === undefined || value === null) return '';
             if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -164,6 +186,9 @@ async function runFigranite(data, options = {}) {
 
         // Redacts on write, so every logs.push call site is covered.
         const logs = createRedactingLog(redactor);
+        secretStoreErrors.forEach((msg) => logs.push(`[FIGRANITE] ${msg}`));
+        warnMissingSecret = (secretName) => logs.push(`[FIGRANITE] Secret "${secretName}" is not defined; substituted an empty value.`);
+        missingSecrets.forEach(warnMissingSecret);
         const downloads = [];
         const pendingDownloads = new Set();
         const newDownloadListeners = new Set();

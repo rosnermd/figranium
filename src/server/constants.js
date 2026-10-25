@@ -18,6 +18,7 @@ const DEFAULT_AI_MODELS = { gemini: 'gemini-3-flash-preview', openai: 'gpt-5-nan
 const STORAGE_STATE_PATH = path.join(__dirname, '../../storage_state.json');
 const EXECUTIONS_FILE = path.join(DATA_DIR, 'executions.json');
 const CREDENTIALS_FILE = path.join(DATA_DIR, 'credentials.json');
+const SECRETS_FILE = path.join(DATA_DIR, 'secrets.json');
 const MAX_TASK_VERSIONS = 30;
 const MAX_EXECUTIONS = 500;
 const REQUEST_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -49,6 +50,7 @@ module.exports = {
     STORAGE_STATE_PATH,
     EXECUTIONS_FILE,
     CREDENTIALS_FILE,
+    SECRETS_FILE,
     MAX_TASK_VERSIONS,
     MAX_EXECUTIONS,
     REQUEST_LIMIT_WINDOW_MS,

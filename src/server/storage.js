@@ -5,6 +5,7 @@ const {
     TASKS_FILE,
     EXECUTIONS_FILE,
     CREDENTIALS_FILE,
+    SECRETS_FILE,
     API_KEY_FILE,
     GEMINI_API_KEY_FILE,
     OPENAI_API_KEY_FILE,
@@ -1070,6 +1071,60 @@ async function saveCredentials(credentials) {
     await fs.promises.writeFile(CREDENTIALS_FILE, JSON.stringify(credentials, null, 2));
 }
 
+// Secrets Storage
+// Records hold only ciphertext (see src/server/secrets.js); the plaintext
+// value never reaches this layer.
+let secretsCache = null;
+
+async function loadSecrets() {
+    if (secretsCache) return secretsCache;
+    const useDB = await ensureDB();
+    if (useDB) {
+        try {
+            const pool = getPool();
+            if (!pool) throw new Error('Database pool not available');
+            const res = await pool.query('SELECT data FROM secrets ORDER BY id ASC');
+            secretsCache = res.rows.map(r => r.data);
+        } catch (e) {
+            console.error('[STORAGE] Failed to load secrets from DB:', e.message);
+            secretsCache = [];
+        }
+        return secretsCache;
+    }
+    try {
+        const raw = await fs.promises.readFile(SECRETS_FILE, 'utf8');
+        secretsCache = JSON.parse(raw);
+    } catch {
+        secretsCache = [];
+    }
+    return secretsCache;
+}
+
+async function saveSecrets(secrets) {
+    secretsCache = secrets;
+    const useDB = await ensureDB();
+    if (useDB) {
+        const pool = getPool();
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query('TRUNCATE secrets');
+            const rows = secrets.map((data, i) => ({ id: i + 1, data }));
+            await bulkInsert(client, 'secrets', ['id', 'data'], rows);
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            console.error('[STORAGE] Failed to save secrets to DB:', e.message);
+            throw e;
+        } finally {
+            client.release();
+        }
+        return;
+    }
+    await fs.promises.mkdir(path.dirname(SECRETS_FILE), { recursive: true });
+    await fs.promises.writeFile(SECRETS_FILE, JSON.stringify(secrets, null, 2), { mode: 0o600 });
+}
+
 // Session Helper
 const saveSession = (req) => new Promise((resolve, reject) => {
     if (!req.session) {
@@ -1242,6 +1297,8 @@ module.exports = {
     saveOllamaApiKey,
     loadCredentials,
     saveCredentials,
+    loadSecrets,
+    saveSecrets,
     saveSession,
     loadAllowedIps,
     getStorageStateFile,

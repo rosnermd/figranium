@@ -9,6 +9,7 @@ import SettingsHeader from './settings/SettingsHeader';
 import ProxiesPanel from './settings/ProxiesPanel';
 import UserAgentPanel from './settings/UserAgentPanel';
 import VersionPanel from './settings/VersionPanel';
+import SecretsPanel from './settings/SecretsPanel';
 import { APP_VERSION } from '@/utils/appInfo';
 import MaterialIcon from './MaterialIcon';
 
@@ -133,7 +134,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
     onConfirm,
     onNotify
 }) => {
-    const [tab, setTab] = useState<'system' | 'data' | 'proxies'>('system');
+    const [tab, setTab] = useState<'system' | 'data' | 'proxies' | 'secrets'>('system');
     const [credentials, setCredentials] = useState<Credential[]>([]);
     const [credentialsLoading, setCredentialsLoading] = useState(false);
     const [addedProviders, setAddedProviders] = useState<string[]>([]);
@@ -1236,6 +1237,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
                             onDelete={deleteCookie}
                         />
                     </>
+                )}
+
+                {tab === 'secrets' && (
+                    <SecretsPanel onConfirm={(message) => onConfirm(message)} onNotify={onNotify} />
                 )}
 
                 {tab === 'proxies' && (

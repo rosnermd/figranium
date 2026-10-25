@@ -10,6 +10,13 @@ const normalizeVarRef = (raw) => {
     return match ? match[1] : trimmed;
 };
 
+// Typed text is often a password, and only secrets the run knows about get
+// redacted, so the log records how much was typed, never what.
+const describeTypedText = (text) => {
+    const length = typeof text === 'string' ? text.length : String(text ?? '').length;
+    return `${length} character${length === 1 ? '' : 's'}`;
+};
+
 const getMergeSources = (raw, runtimeVars, resolveTemplate) => {
     const resolveMaybe = (val) => typeof val === 'string' ? resolveTemplate(val) : val;
     const resolved = resolveMaybe(raw);
@@ -332,7 +339,7 @@ const executeAction = async (act, context) => {
 
             if (selectorValue) {
                 const coords = parseCoords(String(selectorValue));
-                logs.push(`[FIGRANITE] Typing into ${selectorValue}: ${valueText}`);
+                logs.push(`[FIGRANITE] Typing into ${selectorValue}: ${describeTypedText(valueText)}`);
                 if (coords) {
                     await moveMouseHumanlike(page, coords.x, coords.y, { cursorGlide, startX: context.lastMouse?.x, startY: context.lastMouse?.y });
                     await page.mouse.click(coords.x, coords.y, { delay: baseDelay(50) });
@@ -344,7 +351,7 @@ const executeAction = async (act, context) => {
                 await page.waitForSelector(selectorValue, { timeout: actionTimeout });
                 await typeIntoSelector();
             } else {
-                logs.push(`[FIGRANITE] Typing (global): ${valueText}`);
+                logs.push(`[FIGRANITE] Typing (global): ${describeTypedText(valueText)}`);
                 if (typingSecret) await maskElementForCaptures(page, null);
                 if (humanTyping) {
                     await humanType(page, null, valueText, humanOptions);
@@ -686,5 +693,6 @@ const executeAction = async (act, context) => {
 };
 
 module.exports = {
+    describeTypedText,
     executeAction
 };
