@@ -4,6 +4,9 @@ on:
   push:
     branches: ['main', 'beta']
     tags: ['v*']
+  # Manual run from the Actions tab ("Run workflow"). Run it on main to
+  # publish :latest, on beta for :beta, or on a v* tag for that version.
+  workflow_dispatch:
 
 env:
   GH_REGISTRY: ghcr.io
