@@ -74,6 +74,8 @@ const viewRoutes = require('./src/server/routes/views');
 const scheduleRoutes = require('./src/server/routes/schedules');
 const credentialRoutes = require('./src/server/routes/credentials');
 const healthRoutes = require('./src/server/routes/health');
+const secretRoutes = require('./src/server/routes/secrets');
+const { decryptAll: decryptAllSecrets, getCachedSecretValues } = require('./src/server/secrets');
 const { pushOutput } = require('./src/server/outputProviders');
 const { migrateStorageState } = require('./src/server/migrate-storage');
 const { concurrencyGate } = require('./src/server/execution-queue');
@@ -209,6 +211,7 @@ app.use('/api/data', dataRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/credentials', credentialRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/secrets', secretRoutes);
 
 // View Routes & Static
 app.use('/', viewRoutes);
@@ -250,7 +253,10 @@ const registerExecution = (req, res, baseMeta = {}) => {
         cachedRedactor = createRedactor([
             ...collectSecretValues(snapshotVars, secretVarNames),
             ...collectSecretValues(reqBody.taskVariables, secretVarNames),
-            ...collectSecretValues(reqBody.variables, secretVarNames)
+            ...collectSecretValues(reqBody.variables, secretVarNames),
+            // Secret-manager values: the agent masks them itself, this is the
+            // second line of defence for anything that bypasses its redactor.
+            ...getCachedSecretValues()
         ]);
         return cachedRedactor;
     };
@@ -596,6 +602,16 @@ findAvailablePort(port, 20)
             const address = server.address();
             const displayPort = typeof address === 'object' && address ? address.port : availablePort;
             console.log(`Server running at http://localhost:${displayPort}`);
+
+            // Warm the secret cache so response redaction knows the values
+            // before the first run; failures are reported, not fatal.
+            decryptAllSecrets()
+                .then(({ values, errors }) => {
+                    const count = Object.keys(values).length;
+                    if (count) console.log(`[SECRETS] Loaded ${count} secret(s).`);
+                    errors.forEach((msg) => console.warn(`[SECRETS] ${msg}`));
+                })
+                .catch((err) => console.warn('[SECRETS] Failed to load secrets:', err.message));
 
             // One-time migration of storage_state.json cookies into persistent browser profiles
             migrateStorageState().catch(err => console.error('[MIGRATION] Failed:', err.message));

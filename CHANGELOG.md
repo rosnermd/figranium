@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+* **Typed text is no longer logged:** the `type` action logs how many characters it typed instead of the text, so a password typed as a literal value can no longer end up in run logs.
+* **Secret manager:** named secrets stored under Settings → Secrets, encrypted at rest with AES-256-GCM under the new `SECRETS_KEY` environment variable, referenced from any task as `{$secret.NAME}` and redacted from logs, responses, history, webhooks and captures. Values are write-only through the new `/api/secrets` routes (signed-in users only); stored in `data/secrets.json` or a new `secrets` table under PostgreSQL.
+
 ## [0.13.0] - 2026-06-29
 
 ### Critical Architectural Pivot

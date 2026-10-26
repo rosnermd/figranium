@@ -114,6 +114,12 @@ async function initDB() {
                     );
                 `);
                 await client.query(`
+                    CREATE TABLE IF NOT EXISTS secrets (
+                        id SERIAL PRIMARY KEY,
+                        data JSONB NOT NULL
+                    );
+                `);
+                await client.query(`
                     CREATE TABLE IF NOT EXISTS ai_models (
                         id INT PRIMARY KEY DEFAULT 1,
                         data JSONB NOT NULL

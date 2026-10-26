@@ -315,7 +315,7 @@ Mark a variable `secret: true` when it holds a password, token, API key, or card
 
 The value is used normally during execution — it is typed into forms, sent in headers, and templated with `{$password}` like any other variable. What changes is everything that leaves the run:
 
-- **Logs** — every occurrence is replaced with `[REDACTED]`, including the `Typing into #pw: …` line.
+- **Logs** — every occurrence is replaced with `[REDACTED]`. The `type` action never logs what it typed in any case, only how many characters (`Typing into #pw: 13 characters`).
 - **API response** — the returned `logs`, `html`, `data`, and `final_url` are redacted, so a secret echoed back by the target page (`value` attributes survive DOM cleaning) does not reach the caller.
 - **Execution history** — the stored `taskSnapshot.variables` keeps secret entries but replaces their values with `[REDACTED]`; the stored result is the already-redacted response.
 - **Webhooks and output providers** — both receive the redacted result.
@@ -327,7 +327,7 @@ Redaction is exact-value matching, which also covers derived values: copying a s
 
 **Limits worth knowing:**
 - Values shorter than 4 characters are **not** redacted — a 1–2 character secret would match nearly every log line. Use a longer value or accept that it stays visible.
-- Redaction applies to output, not to storage. Secret values are stored in `data/tasks.json` in plaintext, like Baserow credential tokens. Protect the `data/` directory accordingly.
+- Redaction applies to output, not to storage. Secret *variables* are stored in `data/tasks.json` in plaintext, like Baserow credential tokens. For passwords and tokens, prefer stored secrets (below), which are encrypted at rest.
 - Masking a capture depends on the page: it covers the field being typed into, not a value the site later renders somewhere else on the page.
 
 To flag a value captured at runtime — an OTP read off the page, a token from an API response — set `secret` on the `set` action:
@@ -341,6 +341,19 @@ When calling the API, pass secret variables in the request body like any other v
 ```json
 { "variables": { "password": "correct-horse" } }
 ```
+
+### Stored secrets (`{$secret.NAME}`)
+Secrets created under **Settings → Secrets** are stored once, encrypted (AES-256-GCM under the `SECRETS_KEY` environment variable), and usable from any task:
+
+```json
+{ "id": "act_pw", "type": "type", "selector": "input[name=\"password\"]", "value": "{$secret.STREAMLINE_PASSWORD}" }
+```
+
+- `{$secret.NAME}` works anywhere templates work (`url`, `selector`, `value`, headers, ...). Names are letters, digits and underscores, not starting with a digit.
+- Values are decrypted at the start of each run and redacted exactly like secret variables above (logs, response, history, webhooks, captures).
+- They are not placed in the run's variables, so extraction scripts, `{$block.output}` and child tasks started with `start` cannot read them by name.
+- A reference to a secret that does not exist resolves to an empty string and adds a `Secret "NAME" is not defined` line to the logs.
+- Values are write-only: the API (`/api/secrets`, signed-in users only) returns names and timestamps, never values. Without `SECRETS_KEY` the server refuses to store secrets; changing the key makes existing secrets unreadable until their values are re-entered.
 
 ## 17) Notes for AI agents
 - `javascript` actions are page-context only (no `page` object).

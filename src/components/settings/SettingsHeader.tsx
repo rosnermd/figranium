@@ -2,14 +2,15 @@ import React from 'react';
 import MaterialIcon from '../MaterialIcon';
 
 interface SettingsHeaderProps {
-    tab: 'system' | 'data' | 'proxies';
-    onTabChange: (tab: 'system' | 'data' | 'proxies') => void;
+    tab: 'system' | 'data' | 'proxies' | 'secrets';
+    onTabChange: (tab: 'system' | 'data' | 'proxies' | 'secrets') => void;
 }
 
 const TAB_ICONS = {
     system: 'settings',
     data: 'database',
-    proxies: 'security'
+    proxies: 'security',
+    secrets: 'key'
 } as const;
 
 const SettingsHeader: React.FC<SettingsHeaderProps> = ({ tab, onTabChange }) => {
@@ -19,7 +20,7 @@ const SettingsHeader: React.FC<SettingsHeaderProps> = ({ tab, onTabChange }) => 
                 <h2 className="text-2xl font-medium tracking-[0.25em] text-white uppercase">Settings</h2>
             </div>
             <div role="tablist" className="flex bg-white/5 rounded-xl p-1 border border-white/5">
-                {(['system', 'data', 'proxies'] as const).map((t) => (
+                {(['system', 'data', 'proxies', 'secrets'] as const).map((t) => (
                     <button
                         key={t}
                         role="tab"

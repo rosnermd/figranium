@@ -80,6 +80,7 @@ services:
     environment:
       - PORT=11345
       - SESSION_SECRET=your_secure_random_string
+      - SECRETS_KEY=output_of_openssl_rand_hex_32
     restart: unless-stopped
 ```
 ### 3. Start with Docker Compose
@@ -124,6 +125,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `SESSION_SECRET` | Signs session cookies. Required. | — |
+| `SECRETS_KEY` | 32-byte key (hex or base64) that encrypts stored secrets used as `{$secret.NAME}`. Generate with `openssl rand -hex 32`. Required to add secrets; changing it makes existing secrets unreadable. | — |
 | `ALLOWED_IPS` | Comma list for basic IP allowlisting. | none (open) |
 | `TRUST_PROXY` | Honor `X-Forwarded-*` when behind a reverse proxy. | `0` |
 | `ALLOW_PRIVATE_NETWORKS` | Allow scraping local/private IPs (SSRF risk). | `false` |
