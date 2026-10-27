@@ -10,6 +10,14 @@ const { decryptAll: decryptAllSecrets } = require('../../server/secrets');
 const { cleanHtml } = require('../dom-utils');
 const { launchBrowser, createBrowserContext } = require('../browser');
 
+// This file lives one directory deeper than the src/agent/index.js it was
+// split out of, so its old '../../' paths resolved to src/public/captures and
+// src/data/recordings: screenshots were written where the server never serves
+// them (/captures 404'd). Resolve from the repo root, matching server.js.
+const ROOT_DIR = path.join(__dirname, '../../..');
+const CAPTURES_DIR = path.join(ROOT_DIR, 'public', 'captures');
+const RECORDINGS_DIR = path.join(ROOT_DIR, 'data', 'recordings');
+
 // New Modules
 const { buildBlockMap, randomBetween, getForeachItems } = require('./helpers');
 const { evalStructuredCondition, evalCondition } = require('./logic-handler');
@@ -168,7 +176,7 @@ async function runFigranite(data, options = {}) {
         const headless = options.headless !== undefined ? options.headless : true;
         const launchOptions = await launchBrowser({ rotateProxies: useRotateProxies, headless });
 
-        const recordingsDir = path.join(__dirname, '../../data/recordings');
+        const recordingsDir = RECORDINGS_DIR;
         await fs.promises.mkdir(recordingsDir, { recursive: true });
 
         const selectedUA = await selectUserAgent(rotateUserAgents);
@@ -203,7 +211,7 @@ async function runFigranite(data, options = {}) {
                     try {
                         const safeName = originalName.replace(/[^a-zA-Z0-9_.-]/g, '_');
                         const downloadName = `${captureRunId}_dl_${Date.now()}_${safeName}`;
-                        const customCapturesDir = path.join(__dirname, '../../public', 'captures');
+                        const customCapturesDir = CAPTURES_DIR;
                         // ⚡ Bolt: Use non-blocking directory creation
                         await fs.promises.mkdir(customCapturesDir, { recursive: true });
 
@@ -265,7 +273,7 @@ async function runFigranite(data, options = {}) {
         };
 
         const ensureCapturesDir = async () => {
-            const capturesDir = path.join(__dirname, '../../public', 'captures');
+            const capturesDir = CAPTURES_DIR;
             // ⚡ Bolt: Use non-blocking directory creation
             await fs.promises.mkdir(capturesDir, { recursive: true });
             return capturesDir;
@@ -651,7 +659,7 @@ async function runFigranite(data, options = {}) {
         const extractionScript = extractionScriptRaw ? resolveTemplate(extractionScriptRaw) : undefined;
         const extraction = await runExtractionScript(extractionScript, cleanedHtml, page.url(), includeShadowDom);
 
-        const capturesDir = path.join(__dirname, '../../public', 'captures');
+        const capturesDir = CAPTURES_DIR;
         // ⚡ Bolt: Use non-blocking directory creation
         await fs.promises.mkdir(capturesDir, { recursive: true });
 
